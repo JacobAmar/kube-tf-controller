@@ -1,0 +1,11 @@
+apiVersion: "terraform.iac.operator/v1"
+kind: TfProject
+metadata:
+  name: ronaldo-tfp
+spec:
+  path: "terraform"
+  repository: "https://github.com/JacobAmar/iac-operator"
+  backend: qa
+  interval: 30
+  variables:
+    region: "us-east-1"

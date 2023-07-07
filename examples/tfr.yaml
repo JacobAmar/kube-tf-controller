@@ -1,0 +1,6 @@
+apiVersion: "terraform.iac.operator/v1"
+kind: TfRepo
+metadata:
+  name: random-pet-repo
+spec:
+  url: "https://github.com/JacobAmar/iac-operator"
