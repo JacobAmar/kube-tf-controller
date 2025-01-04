@@ -28,7 +28,7 @@ type ResourceSpec struct {
 	// Path is the location of the module to run.
 	// +kubebuilder:validation:Required
 	Path string `json:"path"`
-	// Args is the arguments to pass to the module. if there any.
+	// Args is the arguments to pass to the module.
 	// +kubebuilder:validation:Optional
 	Args []string `json:"args,omitempty"`
 }

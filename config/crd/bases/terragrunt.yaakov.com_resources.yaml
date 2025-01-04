@@ -40,8 +40,7 @@ spec:
             description: ResourceSpec defines the desired state of Resource
             properties:
               args:
-                description: Args is the arguments to pass to the module. if there
-                  any.
+                description: Args is the arguments to pass to the module.
                 items:
                   type: string
                 type: array
