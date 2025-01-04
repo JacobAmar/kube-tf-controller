@@ -130,7 +130,7 @@ func (r *ResourceReconciler) deploymentForTerragrunt(m *terragruntv1alpha1.Resou
 			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": fmt.Sprintf("%s-terragrunt-%s", m.Name, path),
+					"app": fmt.Sprintf("%s-terragunt-%s", m.Name, path),
 				},
 			},
 			Template: corev1.PodTemplateSpec{
