@@ -45,7 +45,7 @@ type ResourceReconciler struct {
 // +kubebuilder:rbac:groups=terragrunt.yaakov.com,resources=resources,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=terragrunt.yaakov.com,resources=resources/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=terragrunt.yaakov.com,resources=resources/finalizers,verbs=update
-
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 // TODO(user): Modify the Reconcile function to compare the state specified by
@@ -61,7 +61,7 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	resource := &terragruntv1alpha1.Resource{}
 	err := r.Get(ctx, req.NamespacedName, resource)
 	if err != nil {
-		if apierror.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			log.Info("Terragrunt Resource not found")
 			return ctrl.Result{}, nil
 		}
