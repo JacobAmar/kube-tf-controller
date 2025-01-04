@@ -1,0 +1,32 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - terragrunt.yaakov.com
+  resources:
+  - resources
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - terragrunt.yaakov.com
+  resources:
+  - resources/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - terragrunt.yaakov.com
+  resources:
+  - resources/status
+  verbs:
+  - get
+  - patch
+  - update

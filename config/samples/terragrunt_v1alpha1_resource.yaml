@@ -1,0 +1,9 @@
+apiVersion: terragrunt.yaakov.com/v1alpha1
+kind: Resource
+metadata:
+  labels:
+    app.kubernetes.io/name: kube-tf-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: resource-sample
+spec:
+  # TODO(user): Add fields here
