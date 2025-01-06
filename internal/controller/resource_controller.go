@@ -22,7 +22,7 @@ import (
 
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -84,20 +84,20 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	// Checking if the deployment is already running
-	found := &appsv1.Deployment{}
+	found := &batchv1.Job{}
 	err = r.Get(ctx, types.NamespacedName{Name: resource.Name, Namespace: resource.Namespace}, found)
 	if err != nil && apierrors.IsNotFound(err) {
 		// Define a new deployment
-		dep, err := r.deploymentForTerragrunt(resource)
+		job, err := r.jobForTerragrunt(resource)
 		if err != nil {
-			log.Error(err, "Failed to create deployment")
+			log.Error(err, "Failed to create job")
 			return ctrl.Result{}, err
 		}
-		log.Info("Creating a new Deployment",
-			"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
-		if err = r.Create(ctx, dep); err != nil {
-			log.Error(err, "Failed to create new Deployment",
-				"Deployment.Namespace", dep.Namespace, "Deployment.Name", dep.Name)
+		log.Info("Creating a new Job",
+			"Job.Namespace", job.Namespace, "Job.Name", job.Name)
+		if err = r.Create(ctx, job); err != nil {
+			log.Error(err, "Failed to create new Job",
+				"Job.Namespace", job.Namespace, "Job.Name", job.Name)
 			return ctrl.Result{}, err
 		}
 		// Requeue Reconiliation
@@ -113,35 +113,31 @@ func (r *ResourceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *ResourceReconciler) deploymentForTerragrunt(m *terragruntv1alpha1.Resource) (*appsv1.Deployment, error) {
-	// Define a new deployment for terragrunt resource
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
+
+func (r *ResourceReconciler) jobForTerragrunt(m *terragruntv1alpha1.Resource) (*batchv1.Job, error) {
+	// Define a new job for terragrunt resource
 	path := m.Spec.Path
-	replicas := int32(1)
 	// Testing
-	image := "ubuntu:22.04"
+	image := "alpine/terragrunt:1.10.3"
 	command := []string{"echo", "Path: ", path, "&&", "sleep", "3600"}
 
-	deployment := &appsv1.Deployment{
+	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("%s-terragrunt-%s", m.Name, path),
 			Namespace: m.Namespace,
 		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: &replicas,
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": fmt.Sprintf("%s-terragunt-%s", m.Name, path),
-				},
-			},
+		Spec: batchv1.JobSpec{
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
+					Name: fmt.Sprintf("%s-terragrunt-%s", m.Name, path),
 					Labels: map[string]string{
 						"app": fmt.Sprintf("%s-terragunt-%s", m.Name, path),
 					},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{{
-						Name:            fmt.Sprintf("%s-terragunt-%s", m.Name, path),
+						Name:            "terragrunt-runner",
 						Image:           image,
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Command:         command,
@@ -150,8 +146,8 @@ func (r *ResourceReconciler) deploymentForTerragrunt(m *terragruntv1alpha1.Resou
 			},
 		},
 	}
-	if err := ctrl.SetControllerReference(m, deployment, r.Scheme); err != nil {
+	if err := ctrl.SetControllerReference(m, job, r.Scheme); err != nil {
 		return nil, err
 	}
-	return deployment, nil
+	return job, nil
 }
