@@ -62,42 +62,44 @@ func (r *ResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	resource := &terragruntv1alpha1.Resource{}
 	err := r.Get(ctx, req.NamespacedName, resource)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			log.Info("Terragrunt Resource not found")
-			return ctrl.Result{}, nil
+	if err != nil && apierrors.IsNotFound(err) {
+		log.Info("Terragrunt Resource not found for %s, Creating new one in namespace: %s", resource.Name, resource.Namespace)
+		job, err := r.jobForTerragrunt(resource)
+		if err != nil {
+			log.Error(err, "Failed to create job for: %s, issue with setup owner reference, error is: %v", resource.Name, err)
+			return ctrl.Result{}, err
 		}
-		log.Error(err, "Failed to get Terragrunt Resource")
-		return ctrl.Result{}, err
+		if err = r.Create(ctx, job); err != nil {
+			log.Error(err, "Failed to create terragrunt job for: %s, reason is %v", resource.Name, err)
+			return ctrl.Result{}, err
+		}
 	}
 	// Checking resource status condition
 	if resource.Status.Conditions == nil || len(resource.Status.Conditions) == 0 {
-		meta.SetStatusCondition(&resource.Status.Conditions, metav1.Condition{Type: "OutOfSync", Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
+		meta.SetStatusCondition(&resource.Status.Conditions, metav1.Condition{Type: "Unknown", Status: metav1.ConditionUnknown, Reason: "Reconciling", Message: "Starting reconciliation"})
 		if err := r.Status().Update(ctx, resource); err != nil {
-			log.Error(err, "Failed to update Terragrunt Resource status")
+			log.Error(err, "Failed to update Terragrunt Resource status for %s in namespace: %s", resource.Name, resource.Namespace)
 			return ctrl.Result{}, err
 		}
 		if err := r.Get(ctx, req.NamespacedName, resource); err != nil {
-			log.Error(err, "Failed to re-fetch Terragrunt Resource")
+			log.Error(err, "Failed to re-fetch Terragrunt Resource: %s in namespace: %s", resource.Name, resource.Namespace)
 			return ctrl.Result{}, err
 		}
 	}
 
-	// Checking if the deployment is already running
+	// Checking if the job is already running
 	found := &batchv1.Job{}
 	err = r.Get(ctx, types.NamespacedName{Name: resource.Name, Namespace: resource.Namespace}, found)
 	if err != nil && apierrors.IsNotFound(err) {
-		// Define a new deployment
+		// Define a new job
 		job, err := r.jobForTerragrunt(resource)
 		if err != nil {
-			log.Error(err, "Failed to create job")
+			log.Error(err, "Failed to create job for: %s, in namespace: %s, error is: %v", resource.Name, resource.Namespace, err)
 			return ctrl.Result{}, err
 		}
-		log.Info("Creating a new Job",
-			"Job.Namespace", job.Namespace, "Job.Name", job.Name)
+		log.Info("Creating a new Job", "Job.Namespace", job.Namespace, "Job.Name", job.Name)
 		if err = r.Create(ctx, job); err != nil {
-			log.Error(err, "Failed to create new Job",
-				"Job.Namespace", job.Namespace, "Job.Name", job.Name)
+			log.Error(err, "Failed to create new Job", "Job.Namespace", job.Namespace, "Job.Name", job.Name)
 			return ctrl.Result{}, err
 		}
 		// Requeue Reconiliation
